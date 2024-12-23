@@ -1,0 +1,67 @@
+set macros
+
+file = "'CuAc_MT_1T.dat'"
+
+set style line 2 lc rgb 'red' pt 6 ps 0.4   # circle
+
+m = 0.01386 #g
+
+Mw = 199.65*2  # Molecular weight; Note that we have to multiply by 2 for the dimer!
+
+T = "($1)"   # T in K
+
+
+#Correction for sample holder diamagnetic moment
+#for an applied field of 1 T (1E4 Oe)
+
+sample_holder = -1.179E-8*1E4 
+
+#Correction for the diamagnetic contribution of the non-magnetic electrons
+#In CGS units the diamagnetic molar susceptibility is approximately 
+#half the molecular weight multiplied by 1E-6  
+ 
+pascal = (-0.5*Mw)*1E-6 
+
+H = "($2)"    # H in Oe
+
+moment = "(($3)-sample_holder)"    # moment in emu corrected from the sample holder
+chim  = "(@moment*Mw/(m*@H)-pascal)" # molar susceptibility
+
+
+a = -1E-5
+J = -100
+g = 2.0
+b = 0.001
+c = -15
+
+
+tmin = "1.8"
+tmax = "350"
+
+
+f(x)=0.75*g**2/(x*(3+exp(-J/x)))+a+b/(x-c)
+
+
+FIT_LIMIT = 1E-6  # demand for high fit quality!
+
+fit [@tmin:@tmax] f(x) @file u @T:@chim via a,J,g,b,c
+
+print("Fit results:")
+print sprintf("Residual diamagnetic correction =%7.6f cm^3/mol",pascal)
+print sprintf("Sample holder correction =%7.6f cm^3/mol",sample_holder)
+print sprintf("J constant = %7.3f K = %7.3f cm^-1",J,0.69503*J)
+print sprintf("Electron g factor =%7.3f ",g)
+print("Residual interdimer (antiferromagnetic) exchange field parameters:")
+print sprintf("Curie-Weiss constant (b) =%7.4f ",b)
+print sprintf("Néel constant (c) =%7.4f ",c)
+
+set xlabel "T (K)"
+set ylabel "{/Symbol c}_m (cm^{3}/mol)"
+set key left
+set title "CuAc.H2O"
+set terminal postscript colour enhanced 
+set output "plot.ps"
+
+
+plot [0:] [0:]  @file u @T:@chim ls 2 t "B_{ap} = 1.0 T", f(x) lt -1 t "Bleaney-Bowers fit" 
+
